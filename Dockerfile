@@ -24,9 +24,6 @@ COPY --from=builder /app/build/package.json /app/build/package-lock.json ./build
 WORKDIR /app/build
 RUN npm ci --omit="dev"
 
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
 EXPOSE 3000
 
-ENTRYPOINT [ "./entrypoint.sh" ]
+CMD ["node", "bin/server.js"]
