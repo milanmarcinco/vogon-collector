@@ -2,11 +2,9 @@ import { inject } from '@adonisjs/core'
 import { Logger } from '@adonisjs/core/logger'
 import { IClientSubscribeOptions } from 'mqtt'
 
-import Parameter from '#models/parameter'
-
 import { mqttMeasurementMessageValidator } from '#validators/measurement'
 import MqttMessageEvent from '#events/mqtt_message_event'
-import Device from '#models/device'
+import { MeasurementService } from '#services/measurement_service'
 
 export interface MqttMessageTopic {
   topic: string
@@ -20,7 +18,10 @@ export interface MqttMessagePayload {
 
 @inject()
 export default class MqttMessageListener {
-  constructor(protected logger: Logger) {}
+  constructor(
+    protected logger: Logger,
+    protected measurementService: MeasurementService
+  ) {}
 
   static TOPICS: MqttMessageTopic[] = [{ topic: 'vogonair/+/raw', qos: 1 }]
 
@@ -29,19 +30,13 @@ export default class MqttMessageListener {
   }
 
   private async handleMeasurement({ topic, message }: MqttMessagePayload) {
-    const [_, macAddress, __] = topic.split('/')
+    const [, macAddress] = topic.split('/')
 
     const payload = JSON.parse(message)
     const data = await mqttMeasurementMessageValidator.validate(payload)
 
     try {
-      const parameter = await Parameter.findByOrFail('code', data.parameter)
-      const device = await Device.findByOrFail('mac_address', macAddress)
-
-      await parameter.related('measurements').create({
-        deviceId: device.id,
-        value: data.value,
-      })
+      await this.measurementService.store({ macAddress, ...data })
     } catch {
       this.logger.error('Parameter or device not found for incoming measurement')
     }
