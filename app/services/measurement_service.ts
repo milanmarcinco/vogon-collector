@@ -24,19 +24,8 @@ export interface IncomingMeasurement {
   value: number
 }
 
-export type StoreResult = 'stored' | 'dropped'
-
 export class MeasurementService {
-  /** Real CO2 never drops below ~400 ppm, so 0 means the sensor failed */
-  static isFailedCo2Reading(parameter: number, value: number) {
-    return parameter === ParameterCode.CO2 && value === 0
-  }
-
-  async store(data: IncomingMeasurement): Promise<StoreResult> {
-    if (MeasurementService.isFailedCo2Reading(data.parameter, data.value)) {
-      return 'dropped'
-    }
-
+  async store(data: IncomingMeasurement) {
     const parameter = await Parameter.findByOrFail('code', data.parameter)
     const device = await Device.findByOrFail('mac_address', data.macAddress)
 
@@ -44,7 +33,5 @@ export class MeasurementService {
       deviceId: device.id,
       value: data.value,
     })
-
-    return 'stored'
   }
 }

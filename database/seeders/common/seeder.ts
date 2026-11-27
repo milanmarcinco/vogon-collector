@@ -17,13 +17,13 @@ export default class extends BaseSeeder {
 
     const [temperature, humidity, pm25, pm10, co2, scd41Temperature, scd41Humidity] =
       await Parameter.updateOrCreateMany(uniqueKey, [
-        { name: 'temperature', code: ParameterCode.TEMPERATURE, unit: '°C' },
-        { name: 'humidity', code: ParameterCode.HUMIDITY, unit: '%' },
-        { name: 'pm2.5', code: ParameterCode.PM25, unit: 'µg/m³' },
-        { name: 'pm10', code: ParameterCode.PM10, unit: 'µg/m³' },
-        { name: 'co2', code: ParameterCode.CO2, unit: 'ppm' },
-        { name: 'temperature (scd41)', code: ParameterCode.SCD41_TEMPERATURE, unit: '°C' },
-        { name: 'humidity (scd41)', code: ParameterCode.SCD41_HUMIDITY, unit: '%' },
+        { name: 'temperature', code: ParameterCode.TEMPERATURE },
+        { name: 'humidity', code: ParameterCode.HUMIDITY },
+        { name: 'pm2.5', code: ParameterCode.PM25 },
+        { name: 'pm10', code: ParameterCode.PM10 },
+        { name: 'co2', code: ParameterCode.CO2 },
+        { name: 'temperature (scd41)', code: ParameterCode.SCD41_TEMPERATURE },
+        { name: 'humidity (scd41)', code: ParameterCode.SCD41_HUMIDITY },
       ])
 
     // sync without detaching keeps the seeder idempotent

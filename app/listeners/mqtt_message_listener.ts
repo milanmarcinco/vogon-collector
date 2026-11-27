@@ -36,11 +36,7 @@ export default class MqttMessageListener {
     const data = await mqttMeasurementMessageValidator.validate(payload)
 
     try {
-      const result = await this.measurementService.store({ macAddress, ...data })
-
-      if (result === 'dropped') {
-        this.logger.warn(`Dropped failed CO2 reading (value 0) from ${macAddress}`)
-      }
+      await this.measurementService.store({ macAddress, ...data })
     } catch {
       this.logger.error('Parameter or device not found for incoming measurement')
     }
