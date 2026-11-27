@@ -15,6 +15,9 @@ export default class Parameter extends BaseModel {
   @column()
   declare code: number
 
+  @column()
+  declare unit: string | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
