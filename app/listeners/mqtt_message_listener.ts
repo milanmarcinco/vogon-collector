@@ -39,9 +39,7 @@ export default class MqttMessageListener {
       const result = await this.measurementService.store({ macAddress, ...data })
 
       if (result === 'dropped') {
-        this.logger.warn(
-          `Dropped failed SCD41 reading from ${macAddress} (parameter ${data.parameter})`
-        )
+        this.logger.warn(`Dropped failed CO2 reading (value 0) from ${macAddress}`)
       }
     } catch {
       this.logger.error('Parameter or device not found for incoming measurement')

@@ -1,7 +1,4 @@
-import { DateTime } from 'luxon'
-
 import Device from '#models/device'
-import Measurement from '#models/measurement'
 import Parameter from '#models/parameter'
 
 export enum SensorCode {
@@ -20,15 +17,6 @@ export enum ParameterCode {
   SCD41_HUMIDITY = 0x07,
 }
 
-/** Parameters reported together with CO2 by the SCD41 in one wake cycle */
-const SCD41_COMPANION_PARAMETERS = [ParameterCode.SCD41_TEMPERATURE, ParameterCode.SCD41_HUMIDITY]
-
-/**
- * Messages of one wake cycle arrive within seconds of each other.
- * The window must stay well below the shortest wake cycle.
- */
-const FAILED_CYCLE_WINDOW_MS = 2 * 60 * 1000
-
 export interface IncomingMeasurement {
   macAddress: string
   sensor: number
@@ -39,33 +27,18 @@ export interface IncomingMeasurement {
 export type StoreResult = 'stored' | 'dropped'
 
 export class MeasurementService {
-  /** Device ID -> time of the last failed SCD41 reading (CO2 = 0) */
-  private static failedScd41Cycles = new Map<string, number>()
-
+  /** Real CO2 never drops below ~400 ppm, so 0 means the sensor failed */
   static isFailedCo2Reading(parameter: number, value: number) {
     return parameter === ParameterCode.CO2 && value === 0
   }
 
-  async store(data: IncomingMeasurement, now = Date.now()): Promise<StoreResult> {
-    const parameter = await Parameter.findByOrFail('code', data.parameter)
-    const device = await Device.findByOrFail('mac_address', data.macAddress)
-
+  async store(data: IncomingMeasurement): Promise<StoreResult> {
     if (MeasurementService.isFailedCo2Reading(data.parameter, data.value)) {
-      MeasurementService.failedScd41Cycles.set(device.id, now)
-      await this.dropScd41Companions(device, now)
       return 'dropped'
     }
 
-    if (SCD41_COMPANION_PARAMETERS.includes(data.parameter)) {
-      const failedAt = MeasurementService.failedScd41Cycles.get(device.id)
-      if (failedAt !== undefined && now - failedAt <= FAILED_CYCLE_WINDOW_MS) {
-        return 'dropped'
-      }
-    }
-
-    if (data.parameter === ParameterCode.CO2) {
-      MeasurementService.failedScd41Cycles.delete(device.id)
-    }
+    const parameter = await Parameter.findByOrFail('code', data.parameter)
+    const device = await Device.findByOrFail('mac_address', data.macAddress)
 
     await parameter.related('measurements').create({
       deviceId: device.id,
@@ -73,22 +46,5 @@ export class MeasurementService {
     })
 
     return 'stored'
-  }
-
-  /**
-   * Firmware sends CO2 before its companions, but delivery order is not
-   * guaranteed, so remove companions of the same cycle stored before the failure
-   */
-  private async dropScd41Companions(device: Device, now: number) {
-    const since = DateTime.fromMillis(now - FAILED_CYCLE_WINDOW_MS).toSQL()
-
-    await Measurement.query()
-      .where('device_id', device.id)
-      .where('created_at', '>=', since!)
-      .whereIn(
-        'parameter_id',
-        Parameter.query().select('id').whereIn('code', SCD41_COMPANION_PARAMETERS)
-      )
-      .delete()
   }
 }
